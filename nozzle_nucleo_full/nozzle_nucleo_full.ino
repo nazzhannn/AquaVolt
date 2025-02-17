@@ -21,8 +21,9 @@ const float RANGES_MAX[] = {70, 80, 3, 3, 70, 80};
 
 LiquidCrystal_I2C lcd(0x27, 20, 4);
 
-const String station_id = "BUKIT BINTANG";
+const String station_id = "Stesen Jalan Pudu";
 const String dispenser_type = "H2O";
+const String location = "Pudu";
 
 char mapCommandToCharacter(uint16_t command) {
   switch (command) {
@@ -84,8 +85,19 @@ void setup() {
   lcd.clear();
 }
 
+unsigned long lastDecodeTime = 0;  // Store the time of last IR decode
+const unsigned long ACTIVE_DURATION = 2000;  // 1 second in milliseconds
+
 void loop() {
+  String active_status = "Inactive";
+  String activeat = "";
+
+  // Check if IR receiver is decoding
   if (IrReceiver.decode()) {
+    lastDecodeTime = millis();  // Update the last decode time
+    active_status = "Active";
+    activeat = station_id;
+
     if (IrReceiver.decodedIRData.protocol != UNKNOWN) {
       char receivedChar = mapCommandToCharacter(IrReceiver.decodedIRData.command);
 
@@ -116,28 +128,39 @@ void loop() {
     IrReceiver.resume();
   }
 
-  // **Ensure last value (vehicle_id) is stored**
+  // Keep the status as "Active" for 1 second after the last IR signal was decoded
+  if (millis() - lastDecodeTime < ACTIVE_DURATION) {
+    active_status = "Active";
+    activeat = station_id;  // Keep the status active for 1 second
+  } else {
+    active_status = "Inactive";
+    activeat = "" ; // Set to inactive after 1 second
+  }
+
+  // Determine the status
+  float soc = (tank_capacity > 0) ? (current_gas / tank_capacity) * 100 : 0;
+  soc = constrain(soc, 0, 100);
+
+  // Set status based on SOC and IR decoding
+  String status = "Available"; // Default status when not decoding
+  if (soc > 95) {
+    status = "Completed"; // If SOC is above 95%
+  } else if (soc <= 95) {
+    status = "Fueling"; // If IR is active and SOC is below 95%
+  }
+
+  // Ensure last value (vehicle_id) is stored
   if (startReceiving && dataIndex == 6) {
     vehicle_id = receivedData; 
   }
 
+  // Update potentiometer values
   for (int i = 0; i < 6; i++) {
-  potValues[i] = map(analogRead(potPins[i]), 0, 1023, RANGES_MIN[i] * 100, RANGES_MAX[i] * 100) / 100.0;
-  potValues[i] = constrain(potValues[i], RANGES_MIN[i], RANGES_MAX[i]);
-}
+    potValues[i] = map(analogRead(potPins[i]), 0, 1023, RANGES_MIN[i] * 100, RANGES_MAX[i] * 100) / 100.0;
+    potValues[i] = constrain(potValues[i], RANGES_MIN[i], RANGES_MAX[i]);
+  }
 
-float max_delivery_press = potValues[0];
-float precool_temp = potValues[1];
-float flow_rate_limit = potValues[2];
-float flow_rate = potValues[3];
-float delivery_press = potValues[4];
-float delivery_temp = potValues[5];
-
-
-  float soc = (tank_capacity > 0) ? (current_gas / tank_capacity) * 100 : 0;
-  soc = constrain(soc, 0, 100);
-  String status = (soc > 95) ? "Completed" : "Fueling";
-
+  // Send data to serial and MySerial
   Serial.print("{");
   Serial.print("\"TankCapacity\":"); Serial.print(tank_capacity, 2); Serial.print(",");
   Serial.print("\"MaxPress\":"); Serial.print(max_press, 2); Serial.print(",");
@@ -146,17 +169,21 @@ float delivery_temp = potValues[5];
   Serial.print("\"TankTemp\":"); Serial.print(tank_temp, 2); Serial.print(",");
   Serial.print("\"CurrentGas\":"); Serial.print(current_gas, 2); Serial.print(",");
   Serial.print("\"SOC\":"); Serial.print(soc, 2); Serial.print(",");
-  Serial.print("\"Status\":\""); Serial.print(status); Serial.print("\",\"");
-  Serial.print("VehicleID\":\""); Serial.print(vehicle_id); Serial.print("\",\"");
-  Serial.print("MaxDeliveryPress\":"); Serial.print(max_delivery_press, 2); Serial.print(",");
-  Serial.print("PrecoolTemp\":"); Serial.print(precool_temp, 2); Serial.print(",");
-  Serial.print("FlowRateLimit\":"); Serial.print(flow_rate_limit, 2); Serial.print(",");
-  Serial.print("FlowRate\":"); Serial.print(flow_rate, 2); Serial.print(",");
-  Serial.print("DeliveryPress\":"); Serial.print(delivery_press, 2); Serial.print(",");
-  Serial.print("DeliveryTemp\":"); Serial.print(delivery_temp, 2); Serial.print(",");
-  Serial.print("StationID\":\""); Serial.print(station_id); Serial.print("\",\"");
-  Serial.print("DispenserType\":\""); Serial.print(dispenser_type); Serial.println("\"}");
+  Serial.print("\"Status\":\""); Serial.print(status); Serial.print("\",");
+  Serial.print("\"VehicleID\":\""); Serial.print(vehicle_id); Serial.print("\",");
+  Serial.print("\"MaxDeliveryPress\":"); Serial.print(potValues[0], 2); Serial.print(",");
+  Serial.print("\"PrecoolTemp\":"); Serial.print(potValues[1], 2); Serial.print(",");
+  Serial.print("\"FlowRateLimit\":"); Serial.print(potValues[2], 2); Serial.print(",");
+  Serial.print("\"FlowRate\":"); Serial.print(potValues[3], 2); Serial.print(",");
+  Serial.print("\"DeliveryPress\":"); Serial.print(potValues[4], 2); Serial.print(",");
+  Serial.print("\"DeliveryTemp\":"); Serial.print(potValues[5], 2); Serial.print(",");
+  Serial.print("\"StationID\":\""); Serial.print(station_id); Serial.print("\",");
+  Serial.print("\"DispenserType\":\""); Serial.print(dispenser_type); Serial.print("\",");
+  Serial.print("\"Active_status\":\""); Serial.print(active_status); Serial.print("\",");
+  Serial.print("\"Activeat\":\""); Serial.print(activeat); Serial.print("\",");
+  Serial.print("\"Location\":\""); Serial.print(location); Serial.println("\"}");
 
+  MySerial.print("&"); // Start of message
   MySerial.print(tank_capacity, 2); MySerial.print(",");
   MySerial.print(max_press, 2); MySerial.print(",");
   MySerial.print(max_temp, 2); MySerial.print(",");
@@ -166,18 +193,24 @@ float delivery_temp = potValues[5];
   MySerial.print(soc, 2); MySerial.print(",");
   MySerial.print(status); MySerial.print(",");
   MySerial.print(vehicle_id); MySerial.print(",");
-  MySerial.print(max_delivery_press, 2); MySerial.print(",");
-  MySerial.print(precool_temp, 2); MySerial.print(",");
-  MySerial.print(flow_rate_limit, 2); MySerial.print(",");
-  MySerial.print(flow_rate, 2); MySerial.print(",");
-  MySerial.print(delivery_press, 2); MySerial.print(",");
-  MySerial.print(delivery_temp, 2); MySerial.print(",");
+  MySerial.print(potValues[0], 2); MySerial.print(",");
+  MySerial.print(potValues[1], 2); MySerial.print(",");
+  MySerial.print(potValues[2], 2); MySerial.print(",");
+  MySerial.print(potValues[3], 2); MySerial.print(",");
+  MySerial.print(potValues[4], 2); MySerial.print(",");
+  MySerial.print(potValues[5], 2); MySerial.print(",");
   MySerial.print(station_id); MySerial.print(",");
-  MySerial.print(dispenser_type); MySerial.println();
+  MySerial.print(dispenser_type); MySerial.print(",");
+  MySerial.print(active_status); MySerial.print(",");
+  MySerial.print(activeat); MySerial.print(",");
+  MySerial.print(location);
+  MySerial.println("$"); // End of message
+
 
   updateLCD(soc, status);
   delay(100);
 }
+
 
 
 
