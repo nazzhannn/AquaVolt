@@ -65,7 +65,7 @@ void sendToFirestore(String values[]) {
                       "\"MAX_DELIVERY_PRESS\": {\"doubleValue\": " + values[9] + "},"
                       "\"PRECOOL_TEMP\": {\"doubleValue\": " + values[10] + "},"
                       "\"FLOW_RATE_LIMIT\": {\"doubleValue\": " + values[11] + "},"
-                      "\"FLOW_RAT\": {\"doubleValue\": " + values[12] + "},"
+                      "\"FLOW_RATE\": {\"doubleValue\": " + values[12] + "},"
                       "\"DELIVERY_PRESS\": {\"doubleValue\": " + values[13] + "},"
                       "\"DELIVERY_TEMP\": {\"doubleValue\": " + values[14] + "}"
                       "}}";
