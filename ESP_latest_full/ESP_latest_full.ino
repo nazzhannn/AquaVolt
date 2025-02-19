@@ -41,15 +41,18 @@ void loop() {
     static String lastVehicleID = "";  
     String vehicle_id = values[8];  
 
-    if (vehicle_id != "") {
-        lastVehicleID = vehicle_id;  delay(300);
-        findAndUpdatePayment(vehicle_id, values);  
-    } else if (lastVehicleID != "") {
-        Serial.println("Nozzle detached. Updating last vehicle's status to Inactive.");
-        delay(300);
-        updatePaymentStatusToInactive(lastVehicleID);
-        lastVehicleID = "";  
-    }
+    static bool inactiveUpdated = false;
+if (vehicle_id != "") {
+    lastVehicleID = vehicle_id;  
+    inactiveUpdated = false;
+    findAndUpdatePayment(vehicle_id, values);
+} else if (!inactiveUpdated && lastVehicleID != "") {
+    Serial.println("Nozzle detached. Updating last vehicle's status to Inactive.");
+    updatePaymentStatusToInactive(lastVehicleID);
+    lastVehicleID = "";
+    inactiveUpdated = true;
+}
+
 }
 
 }
@@ -129,9 +132,9 @@ String jsonData = "{\"fields\": {"
                   "\"FLOW_RATE\": {\"doubleValue\": " + String(values[12].toFloat(), 2) + "},"
                   "\"DELIVERY_PRESS\": {\"doubleValue\": " + String(values[13].toFloat(), 2) + "},"
                   "\"DELIVERY_TEMP\": {\"doubleValue\": " + String(values[14].toFloat(), 2) + "},"
-                  "\"station_id\": {\"stringValue\": \"" + values[15] + "\"},"
-                  "\"dispenser_type\": {\"stringValue\": \"" + values[16] + "\"},"
-                  "\"location\": {\"stringValue\": \"" + values[19] + "\"}"
+                  "\"station_id\": {\"stringValue\": \"Stesen Jalan Pudu\"},"
+                  "\"dispenser_type\": {\"stringValue\": \"H20\"},"
+                  "\"location\": {\"stringValue\": \"Pudu\"}"
                   "}}";
 
 
@@ -197,15 +200,16 @@ String extractDocumentID(String response) {
 void updatePaymentDocument(String docID, String values[]) {
     String url = paymentURL + "/" + docID;
 
-String jsonData = "{\"fields\": {"
-                  "\"vehicle_id\": {\"stringValue\": \"" + values[8] + "\"},"
-                  "\"status\": {\"stringValue\": \"" + values[17] + "\"},"
-                  "\"activeat\": {\"stringValue\": \"" + values[15] + "\"}"
-                  "}}";
 
+    String jsonData = "{\"fields\": {"
+                      "\"vehicle_id\": {\"stringValue\": \"" + values[8] + "\"},"
+                      "\"status\": {\"stringValue\": \"Active\"},"
+                      "\"activeat\": {\"stringValue\": \"" + values[15] + "\"}"
+                      "}}";
 
     sendFirestoreRequest(url, jsonData);
 }
+
 
 // 🔹 Function to Send HTTP Request to Firestore
 void sendFirestoreRequest(String url, String jsonData) {
@@ -252,7 +256,7 @@ void updatePaymentStatusToInactive(String lastVehicleID) {
         String docID = extractDocumentID(response);
         if (docID != "") {
             Serial.println("Updating last vehicle (" + lastVehicleID + ") to Inactive.");
-            updatePaymentDocumentInactive(docID);
+            updatePaymentDocumentInactive(docID, lastVehicleID);
         } else {
             Serial.println("No matching document found to update.");
         }
@@ -263,11 +267,13 @@ void updatePaymentStatusToInactive(String lastVehicleID) {
 }
 
 // 🔹 Function to Send "Inactive" Update
-void updatePaymentDocumentInactive(String docID) {
+void updatePaymentDocumentInactive(String docID, String lastVehicleID) {
     String url = paymentURL + "/" + docID;
 
     String jsonData = "{\"fields\": {"
-                      "\"status\": {\"stringValue\": \"Inactive\"}"
+                      "\"status\": {\"stringValue\": \"Inactive\"},"
+                      "\"activeat\": {\"stringValue\": \"\"},"
+                      "\"vehicle_id\": {\"stringValue\": \"" + lastVehicleID + "\"}"
                       "}}";
 
     sendFirestoreRequest(url, jsonData);
