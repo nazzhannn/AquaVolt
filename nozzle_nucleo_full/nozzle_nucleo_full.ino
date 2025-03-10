@@ -16,7 +16,7 @@ const int potPins[] = {A0, A1, A4, A5, A6, A7};
 float potValues[6] = {0};
 
 HardwareSerial MySerial(PA10, PA9);
-const float RANGES_MIN[] = {0, -40, 0, 0, 0, -40};
+const float RANGES_MIN[] = {0, -40, 0, 0, 0, -40}; //mxp,pcl,frl,fr,dp,dt
 const float RANGES_MAX[] = {70, 80, 3, 3, 70, 80};
 
 LiquidCrystal_I2C lcd(0x27, 20, 4);
@@ -162,7 +162,7 @@ void loop() {
     }
 
     // Stop the loading after 30 seconds
-    if (loadingActive && millis() - loadingStartTime >= 40000) {
+    if (loadingActive && millis() - loadingStartTime >= 30000) {
         loadingActive = false;
         lcd.clear();  // Clear LCD
     }

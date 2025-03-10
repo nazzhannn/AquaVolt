@@ -132,7 +132,8 @@ String jsonData = "{\"fields\": {"
                   "\"FLOW_RATE\": {\"doubleValue\": " + String(values[12].toFloat(), 2) + "},"
                   "\"DELIVERY_PRESS\": {\"doubleValue\": " + String(values[13].toFloat(), 2) + "},"
                   "\"DELIVERY_TEMP\": {\"doubleValue\": " + String(values[14].toFloat(), 2) + "},"
-                  "\"station_id\": {\"stringValue\": \"Stesen Jalan Pudu\"},"
+                  "\"name\": {\"stringValue\": \"Stesen Jalan Pudu\"},"
+                  "\"logo\": {\"stringValue\": \"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT64ZIoS1hMzgrQRFzQr4js0r6XpMMhfWxt6Q&s\"},"
                   "\"dispenser_type\": {\"stringValue\": \"H20\"},"
                   "\"location\": {\"stringValue\": \"Pudu\"}"
                   "}}";
@@ -147,11 +148,11 @@ void findAndUpdatePayment(String vehicle_id, String values[]) {
     // Construct the Firestore query body in JSON format to filter by vehicle_id
     String queryBody = "{"
                         "\"structuredQuery\": {"
-                        "\"select\": {\"fields\": [{\"fieldPath\": \"vehicle_id\"}]},"   // Select the vehicle_id field
+                        "\"select\": {\"fields\": [{\"fieldPath\": \"vehicle\"}]},"   // Select the vehicle_id field
                         "\"from\": [{\"collectionId\": \"payment\", \"allDescendants\": false}],"
                         "\"where\": {"
                         "\"fieldFilter\": {"
-                        "\"field\": {\"fieldPath\": \"vehicle_id\"},"
+                        "\"field\": {\"fieldPath\": \"vehicle\"},"
                         "\"op\": \"EQUAL\","
                         "\"value\": {\"stringValue\": \"" + vehicle_id + "\"}"
                         "}"
@@ -202,7 +203,7 @@ void updatePaymentDocument(String docID, String values[]) {
 
 
     String jsonData = "{\"fields\": {"
-                      "\"vehicle_id\": {\"stringValue\": \"" + values[8] + "\"},"
+                      "\"vehicle\": {\"stringValue\": \"" + values[8] + "\"},"
                       "\"status\": {\"stringValue\": \"Active\"},"
                       "\"activeat\": {\"stringValue\": \"" + values[15] + "\"}"
                       "}}";
@@ -230,11 +231,11 @@ void sendFirestoreRequest(String url, String jsonData) {
 void updatePaymentStatusToInactive(String lastVehicleID) {
     String queryBody = "{"
                         "\"structuredQuery\": {"
-                        "\"select\": {\"fields\": [{\"fieldPath\": \"vehicle_id\"}]},"   
+                        "\"select\": {\"fields\": [{\"fieldPath\": \"vehicle\"}]},"   
                         "\"from\": [{\"collectionId\": \"payment\", \"allDescendants\": false}],"
                         "\"where\": {"
                         "\"fieldFilter\": {"
-                        "\"field\": {\"fieldPath\": \"vehicle_id\"},"
+                        "\"field\": {\"fieldPath\": \"vehicle\"},"
                         "\"op\": \"EQUAL\","
                         "\"value\": {\"stringValue\": \"" + lastVehicleID + "\"}"
                         "}"
@@ -273,7 +274,7 @@ void updatePaymentDocumentInactive(String docID, String lastVehicleID) {
     String jsonData = "{\"fields\": {"
                       "\"status\": {\"stringValue\": \"Inactive\"},"
                       "\"activeat\": {\"stringValue\": \"\"},"
-                      "\"vehicle_id\": {\"stringValue\": \"" + lastVehicleID + "\"}"
+                      "\"vehicle\": {\"stringValue\": \"" + lastVehicleID + "\"}"
                       "}}";
 
     sendFirestoreRequest(url, jsonData);
